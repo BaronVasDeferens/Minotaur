@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val labyrinth = Labyrinth(8,8)
+    val labyrinth = Labyrinth(3,2)
 
     @ExperimentalCoroutinesApi
     val keyInputChannel = ConflatedBroadcastChannel<KeyEvent>()
@@ -83,16 +83,16 @@ object MinotaurMain {
     private fun onKeyPressed(x: KeyEvent) {
         when (x.extendedKeyCode) {
             KeyEvent.VK_W -> {
-                labyrinth.openDoors(2,2, listOf(NORTH))
+                labyrinth.openDoors(1,1, listOf(NORTH))
             }
             KeyEvent.VK_A -> {
-                labyrinth.openDoors(2,2, listOf(WEST))
+                labyrinth.openDoors(1,1, listOf(WEST))
             }
             KeyEvent.VK_S -> {
-                labyrinth.openDoors(2,2,listOf(SOUTH))
+                labyrinth.openDoors(1,1,listOf(SOUTH))
             }
             KeyEvent.VK_D -> {
-                labyrinth.openDoors(2,2, listOf(EAST))
+                labyrinth.openDoors(1,1, listOf(EAST))
             }
             KeyEvent.VK_ESCAPE -> {
                 exitProcess(0)
