@@ -1,3 +1,4 @@
+import Labyrinth.Direction.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.*
@@ -9,6 +10,7 @@ import java.awt.event.KeyListener
 import java.awt.image.BufferedImage
 import javax.swing.JFrame
 import javax.swing.JPanel
+import kotlin.system.exitProcess
 
 object MinotaurMain {
 
@@ -25,11 +27,11 @@ object MinotaurMain {
         }
 
         override fun keyReleased(e: KeyEvent?) {
-            keyInputChannel.offer(e!!)
+            //keyInputChannel.offer(e!!)
         }
 
         override fun keyTyped(e: KeyEvent?) {
-            keyInputChannel.offer(e!!)
+            //keyInputChannel.offer(e!!)
         }
 
         init {
@@ -41,10 +43,18 @@ object MinotaurMain {
 
         var imageToDraw = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
 
+        init {
+            labyrinth.renderedImageChannel.asFlow().onEach { image ->
+                imageToDraw = image
+                repaint()
+            }.launchIn(GlobalScope)
+        }
+
         override fun paintComponent(g: Graphics?) {
             super.paintComponent(g)
             g?.drawImage(imageToDraw, 0, 0, null)
             g?.dispose()
+            println("drawn")
         }
 
     }
@@ -63,33 +73,29 @@ object MinotaurMain {
         frame.pack()
         frame.isVisible = true
 
-
-
         GlobalScope.launch {
-            panel.repaint()
             keyInputChannel.asFlow().onEach { keyState ->
                 onKeyPressed(keyState)
-            }.launchIn(this)
+            }.launchIn(GlobalScope)
         }
-
-        GlobalScope.launch {
-            while (true) {
-                panel.imageToDraw = labyrinth.renderMaze()
-            }
-        }
-
     }
 
     private fun onKeyPressed(x: KeyEvent) {
         when (x.extendedKeyCode) {
+            KeyEvent.VK_W -> {
+                labyrinth.openDoors(2,2, listOf(NORTH))
+            }
             KeyEvent.VK_A -> {
-                labyrinth.setOccupied(1,1)
+                labyrinth.openDoors(2,2, listOf(WEST))
             }
             KeyEvent.VK_S -> {
-                labyrinth.setOccupied(2,2)
+                labyrinth.openDoors(2,2,listOf(SOUTH))
             }
             KeyEvent.VK_D -> {
-                labyrinth.setOccupied(3,3)
+                labyrinth.openDoors(2,2, listOf(EAST))
+            }
+            KeyEvent.VK_ESCAPE -> {
+                exitProcess(0)
             }
         }
         panel.repaint()
