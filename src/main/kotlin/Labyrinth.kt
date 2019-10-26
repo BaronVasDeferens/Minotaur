@@ -23,13 +23,13 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
         fun open(openTheseDoors: List<Direction>) {
             openDoors.addAll(openTheseDoors)
-            println("$row $col open: $openDoors closed: ${closedDoors()}")
+            println("$col $row open: $openDoors closed: ${closedDoors()}")
         }
     }
 
     val maze: Array<Array<Room>>
 
-    private fun getRoom(row: Int, col: Int): Room? {
+    private fun getRoom(col: Int, row: Int): Room? {
         return if (row < 0 || row >= rows || col < 0 || col >= columns) null
         else (maze[col][row])
     }
@@ -43,23 +43,30 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
             }
         }
 
+
         val rando = Random
 
         val reachableRooms = mutableSetOf<Room>()
         val frontier = mutableSetOf<Room>()
 
-        val initialRoom = getRoom(0,0)!! // getRoom(rando.nextInt(rows), rando.nextInt(columns))!!
-//          openDoors(0,0, listOf(WEST))
-
+//        val initialRoom = maze[1][1] // getRoom(rando.nextInt(rows), rando.nextInt(columns))!!
+//        val adjacentToInitialRoom = getRoomsAdjacentTo(initialRoom).random()
+//        openDoors(initialRoom.col, initialRoom.row, listOf(adjacentToInitialRoom.second))
+//
 //        reachableRooms.add(initialRoom)
-//        frontier.addAll(getRoomsAdjacentTo(initialRoom).map { it.first })
+//        reachableRooms.add(adjacentToInitialRoom.first)
+//
+//        frontier.addAll(
+//            getRoomsAdjacentTo(initialRoom)
+//                .plus(getRoomsAdjacentTo(adjacentToInitialRoom.first))
+//                .map { it.first }
+//                .filterNot { it.isClosed() })
 
-
-//        while (reachableRooms.size < 8) {
+//        while (reachableRooms.size < rows * columns) {
 //            val room = frontier.random()
 //            frontier.remove(room)
 //            val adjacentsToRoom = getRoomsAdjacentTo(room)
-//            val reachableNeighbor = adjacentsToRoom.filterNot { it.first.isClosed() }.random()
+//            val reachableNeighbor = adjacentsToRoom.random()
 //            openDoors(room.row, room.col, listOf(reachableNeighbor.second))
 //            frontier.addAll(adjacentsToRoom.filterNot { it.first.isClosed() }.map { it.first })
 //            reachableRooms.addAll(listOf<Room>(room, reachableNeighbor.first))
@@ -76,48 +83,50 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
         val adjacents = mutableListOf<Pair<Room, Direction>>()
 
-        getRoom(room.row , room.col +1)?.let {
-            adjacents.add(Pair(it, EAST))
+        getRoom(room.col , room.row + 1)?.let {
+            adjacents.add(Pair(it, SOUTH))
         }
 
-        getRoom(room.row, room.col -1)?.let {
-            adjacents.add(Pair(it, WEST))
-        }
-
-        getRoom(room.row +1, room.col)?.let {
+        getRoom(room.col, room.row - 1)?.let {
             adjacents.add(Pair(it, NORTH))
         }
 
-        getRoom(room.row -1, room.col)?.let {
-            adjacents.add(Pair(it, SOUTH))
+        getRoom(room.col + 1, room.row)?.let {
+            adjacents.add(Pair(it, EAST))
+        }
+
+        getRoom(room.col - 1, room.row)?.let {
+            adjacents.add(Pair(it, WEST))
         }
 
         return adjacents
     }
 
-    fun openDoors(row: Int, col: Int, openTheseDoors: List<Direction>) {
+    fun openDoors(col: Int, row: Int, openTheseDoors: List<Direction>) {
 
-        maze[row][col].open(openTheseDoors)
+        maze[col][row].open(openTheseDoors)
 
         // Open the corresponding door on the other side
         openTheseDoors.forEach {
             when (it) {
 
                 NORTH -> {
-                    getRoom(row, col - 1)?.open(listOf(SOUTH))
-                }
-
-                WEST -> {
-                    getRoom(row -1 , col)?.open(listOf(EAST))
-                }
-
-                EAST -> {
-                    getRoom(row + 1, col)?.open(listOf(WEST))
+                    getRoom(col, row - 1)?.open(listOf(SOUTH))
                 }
 
                 SOUTH -> {
-                    getRoom(row, col + 1)?.open(listOf(NORTH))
+                    getRoom(col, row + 1)?.open(listOf(NORTH))
                 }
+
+                WEST -> {
+                    getRoom(col -1 , row)?.open(listOf(EAST))
+                }
+
+                EAST -> {
+                    getRoom(col + 1, row)?.open(listOf(WEST))
+                }
+
+
 
 
             }
@@ -138,11 +147,11 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
         g.color = Color.BLACK
 
-        for (row in 0 until rows) {
-            for (col in 0 until columns) {
+        for (col in 0 until columns) {
+            for (row in 0 until rows) {
 
-                val startX = row * blockSize
-                val startY = col * blockSize
+                val startX = col * blockSize
+                val startY = row * blockSize
 
 //                getRoom(row,col)?.isClosed().let {
 //                    when (it) {

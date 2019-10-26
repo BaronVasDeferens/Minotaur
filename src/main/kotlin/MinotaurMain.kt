@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val labyrinth = Labyrinth(3,2)
+    val labyrinth = Labyrinth(3,4)
 
     @ExperimentalCoroutinesApi
     val keyInputChannel = ConflatedBroadcastChannel<KeyEvent>()
