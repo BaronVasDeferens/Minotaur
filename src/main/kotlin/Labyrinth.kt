@@ -23,67 +23,95 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
         fun open(openTheseDoors: List<Direction>) {
             openDoors.addAll(openTheseDoors)
-            println("$col $row open: $openDoors closed: ${closedDoors()}")
         }
     }
 
     val maze: Array<Array<Room>>
 
-    private fun getRoom(col: Int, row: Int): Room? {
+    fun getRoom(col: Int, row: Int): Room? {
         return if (row < 0 || row >= rows || col < 0 || col >= columns) null
         else (maze[col][row])
     }
 
     init {
-
-
-       maze = Array(columns) { colNum ->
+        maze = Array(columns) { colNum ->
             Array(rows) { rowNum ->
                 Room(colNum, rowNum)
             }
         }
+    }
 
-
-        val rando = Random
-
-        val reachableRooms = mutableSetOf<Room>()
-        val frontier = mutableSetOf<Room>()
-
-//        val initialRoom = maze[1][1] // getRoom(rando.nextInt(rows), rando.nextInt(columns))!!
-//        val adjacentToInitialRoom = getRoomsAdjacentTo(initialRoom).random()
-//        openDoors(initialRoom.col, initialRoom.row, listOf(adjacentToInitialRoom.second))
-//
-//        reachableRooms.add(initialRoom)
-//        reachableRooms.add(adjacentToInitialRoom.first)
-//
-//        frontier.addAll(
-//            getRoomsAdjacentTo(initialRoom)
-//                .plus(getRoomsAdjacentTo(adjacentToInitialRoom.first))
-//                .map { it.first }
-//                .filterNot { it.isClosed() })
-
-//        while (reachableRooms.size < rows * columns) {
-//            val room = frontier.random()
-//            frontier.remove(room)
-//            val adjacentsToRoom = getRoomsAdjacentTo(room)
-//            val reachableNeighbor = adjacentsToRoom.random()
-//            openDoors(room.row, room.col, listOf(reachableNeighbor.second))
-//            frontier.addAll(adjacentsToRoom.filterNot { it.first.isClosed() }.map { it.first })
-//            reachableRooms.addAll(listOf<Room>(room, reachableNeighbor.first))
-//        }
-
-        renderedImageChannel.offer(renderMaze())
+    fun initializeMaze() {
+        for (a in maze) {
+            for (aa in a) {
+                aa.openDoors.clear()
+            }
+        }
+        createMaze()
     }
 
     /*
-        Returns a list of rooms adjacent to the specified room
-        and the direction these room lies from the specified room
+    Using Prim's algorithm for finding a minimal spanning tree, construct a maze where every "room" is
+    reachable from any other room (fully connected graph)
      */
-    private fun getRoomsAdjacentTo(room: Room): List<Pair<Room, Direction>> {
+    fun createMaze() {
+
+        val rando = Random
+        val reachableRooms = mutableSetOf<Room>()
+        val frontier = mutableSetOf<Room>()
+
+        val initialRoom = maze[rando.nextInt(columns)][rando.nextInt(rows)]
+
+        val firstNeighbor = findAdjacentRooms(initialRoom).shuffled().first()
+        openDoors(initialRoom, firstNeighbor.second)
+
+        reachableRooms.add(initialRoom)
+        reachableRooms.add(firstNeighbor.first)
+
+        frontier.addAll(
+            findAdjacentRooms(firstNeighbor.first)
+                .map { it.first }
+                .filter { it.isClosed() }
+                .toList()
+        )
+
+        while (frontier.isNotEmpty()) {
+
+           val room = frontier.shuffled()[0]
+            frontier.remove(room)
+
+           val adjacentRoom = findAdjacentRooms(room)
+                .filter { reachableRooms.contains(it.first) }
+                .toList()
+                .shuffled()
+                .firstOrNull()
+
+            if (adjacentRoom != null) {
+                openDoors(room, adjacentRoom.second)
+                reachableRooms.add(room)
+
+                val newFrontiers = findAdjacentRooms(room)
+                    .map { it.first }
+                    .filter { !reachableRooms.contains(it) }
+                    .toList()
+
+                frontier.addAll(newFrontiers)
+            }
+        }
+
+        // renderedImageChannel.offer(renderMaze())
+    }
+
+
+    /*
+        Returns a list of rooms adjacent to the specified room
+        and the direction a room lies from the specified room
+     */
+    fun findAdjacentRooms(room: Room): List<Pair<Room, Direction>> {
 
         val adjacents = mutableListOf<Pair<Room, Direction>>()
 
-        getRoom(room.col , room.row + 1)?.let {
+        getRoom(room.col, room.row + 1)?.let {
             adjacents.add(Pair(it, SOUTH))
         }
 
@@ -100,6 +128,10 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
         }
 
         return adjacents
+    }
+
+    fun openDoors(room: Room, vararg openTheseDoors: Direction) {
+        openDoors(room.col, room.row, openTheseDoors.asList())
     }
 
     fun openDoors(col: Int, row: Int, openTheseDoors: List<Direction>) {
@@ -119,21 +151,16 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
                 }
 
                 WEST -> {
-                    getRoom(col -1 , row)?.open(listOf(EAST))
+                    getRoom(col - 1, row)?.open(listOf(EAST))
                 }
 
                 EAST -> {
                     getRoom(col + 1, row)?.open(listOf(WEST))
                 }
-
-
-
-
             }
         }
 
         renderedImageChannel.offer(renderMaze())
-
     }
 
     fun renderMaze(): BufferedImage {
@@ -143,7 +170,7 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
         val g = image.graphics
 
         g.color = Color.WHITE
-        g.fillRect(0,0,800,800)
+        g.fillRect(0, 0, 800, 800)
 
         g.color = Color.BLACK
 
@@ -153,40 +180,30 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
                 val startX = col * blockSize
                 val startY = row * blockSize
 
-//                getRoom(row,col)?.isClosed().let {
-//                    when (it) {
-//                        true ->  {
-//                            g.color = Color.BLUE
-//                            g.fillRect(startX, startY, blockSize, blockSize)
-//                        }
-//                        else -> {
-//                            g.color = Color.RED
-//                            g.fillRect(startX, startY, blockSize, blockSize)
-//                        }
-//                    }
-//                }
-
                 g.color = Color.BLACK
                 maze[col][row].closedDoors().forEach { direction ->
+
+                    if (maze[col][row].isClosed()) {
+                        g.color = Color.GRAY
+                        g.fillRect(startX, startY, blockSize, blockSize)
+                    }
+
                     when (direction) {
                         NORTH -> {
-                            g.color = Color.RED
+//                            g.color = Color.RED
                             g.fillRect(startX, startY, blockSize, blockSize / 10)
                         }
                         SOUTH -> {
-                            g.color = Color.BLUE
-
+//                            g.color = Color.BLUE
                             g.fillRect(startX, startY + (blockSize * .9).toInt(), blockSize, blockSize / 10)
                         }
                         WEST -> {
-                            g.color = Color.YELLOW
-
-                            g.fillRect(startX, startY , blockSize / 10, blockSize )
+//                            g.color = Color.YELLOW
+                            g.fillRect(startX, startY, blockSize / 10, blockSize)
                         }
                         EAST -> {
-                            g.color = Color.GREEN
-
-                            g.fillRect(startX + (blockSize * .9).toInt(), startY , blockSize / 10, blockSize )
+//                            g.color = Color.GREEN
+                            g.fillRect(startX + (blockSize * .9).toInt(), startY, blockSize / 10, blockSize)
                         }
                     }
                 }

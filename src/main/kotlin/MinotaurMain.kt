@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val labyrinth = Labyrinth(3,4)
+    val labyrinth = Labyrinth(25,25,30)
 
     @ExperimentalCoroutinesApi
     val keyInputChannel = ConflatedBroadcastChannel<KeyEvent>()
@@ -44,6 +44,7 @@ object MinotaurMain {
         var imageToDraw = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
 
         init {
+
             labyrinth.renderedImageChannel.asFlow().onEach { image ->
                 imageToDraw = image
                 repaint()
@@ -54,9 +55,7 @@ object MinotaurMain {
             super.paintComponent(g)
             g?.drawImage(imageToDraw, 0, 0, null)
             g?.dispose()
-            println("drawn")
         }
-
     }
 
 
@@ -69,7 +68,7 @@ object MinotaurMain {
         frame.add(panel)
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.title = "FIND THE GIRL WHILE YOU CAN"
-        frame.preferredSize = Dimension(800, 800)
+        frame.preferredSize = Dimension(850, 850)
         frame.pack()
         frame.isVisible = true
 
@@ -93,6 +92,9 @@ object MinotaurMain {
             }
             KeyEvent.VK_D -> {
                 labyrinth.openDoors(1,1, listOf(EAST))
+            }
+            KeyEvent.VK_SPACE -> {
+                labyrinth.initializeMaze()
             }
             KeyEvent.VK_ESCAPE -> {
                 exitProcess(0)
