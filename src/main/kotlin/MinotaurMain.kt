@@ -14,13 +14,14 @@ import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val labyrinth = Labyrinth(25,25,30)
+    val labyrinth = Labyrinth(8, 8)
+    var currentRoom = labyrinth.getRoom(0, 0)!!
 
     @ExperimentalCoroutinesApi
     val keyInputChannel = ConflatedBroadcastChannel<KeyEvent>()
 
     @ExperimentalCoroutinesApi
-    private val frame = object: JFrame(), KeyListener {
+    private val frame = object : JFrame(), KeyListener {
 
         override fun keyPressed(e: KeyEvent?) {
             keyInputChannel.offer(e!!)
@@ -41,10 +42,9 @@ object MinotaurMain {
 
     private val panel = object : JPanel(true) {
 
-        var imageToDraw = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
+        var imageToDraw = BufferedImage(850, 850, BufferedImage.TYPE_INT_ARGB)
 
         init {
-
             labyrinth.renderedImageChannel.asFlow().onEach { image ->
                 imageToDraw = image
                 repaint()
@@ -81,25 +81,59 @@ object MinotaurMain {
 
     private fun onKeyPressed(x: KeyEvent) {
         when (x.extendedKeyCode) {
+
             KeyEvent.VK_W -> {
-                labyrinth.openDoors(1,1, listOf(NORTH))
+                // Move NORTH
+                if (currentRoom.openDoors.contains(NORTH)) {
+                    currentRoom = labyrinth.getRoom(currentRoom.col, currentRoom.row - 1)!!
+                    labyrinth.renderRoom(currentRoom)
+                }
             }
             KeyEvent.VK_A -> {
-                labyrinth.openDoors(1,1, listOf(WEST))
+                // Move WEST
+                if (currentRoom.openDoors.contains(WEST)) {
+                    currentRoom = labyrinth.getRoom(currentRoom.col - 1, currentRoom.row)!!
+                    labyrinth.renderRoom(currentRoom)
+                }
             }
+
             KeyEvent.VK_S -> {
-                labyrinth.openDoors(1,1,listOf(SOUTH))
+                // move SOUTH
+                if (currentRoom.openDoors.contains(SOUTH)) {
+                    currentRoom = labyrinth.getRoom(currentRoom.col, currentRoom.row + 1)!!
+                    labyrinth.renderRoom(currentRoom)
+                }
             }
+
             KeyEvent.VK_D -> {
-                labyrinth.openDoors(1,1, listOf(EAST))
+                // Move EAST
+                if (currentRoom.openDoors.contains(EAST)) {
+                    currentRoom = labyrinth.getRoom(currentRoom.col + 1, currentRoom.row)!!
+                    labyrinth.renderRoom(currentRoom)
+                }
             }
+
             KeyEvent.VK_SPACE -> {
+                // Initialize and render
                 labyrinth.initializeMaze()
             }
+
+            KeyEvent.VK_J -> {
+                // Show the maze view
+                labyrinth.publishLatestFullMazeRender()
+            }
+
+            KeyEvent.VK_K -> {
+                // Show the room view
+                labyrinth.renderRoom(currentRoom)
+            }
+
             KeyEvent.VK_ESCAPE -> {
+                // Quit
                 exitProcess(0)
             }
         }
+        println("${currentRoom.col}, ${currentRoom.row} : ${currentRoom.openDoors}")
         panel.repaint()
     }
 

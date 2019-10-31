@@ -2,9 +2,14 @@ import Labyrinth.Direction.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import java.awt.Color
 import java.awt.image.BufferedImage
+import java.nio.Buffer
 import kotlin.random.Random
 
-class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
+class Labyrinth(val columns: Int,
+                val rows: Int,
+                val blockSize: Int = 100,
+                val renderWidth: Int = 850,
+                val renderHeight: Int = 850) {
 
     val renderedImageChannel = ConflatedBroadcastChannel<BufferedImage>()
 
@@ -13,6 +18,7 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
     }
 
     data class Room(val col: Int, val row: Int) {
+
         var openDoors = mutableSetOf<Direction>()
 
         fun closedDoors() = Direction.values().toMutableSet().minus(openDoors)
@@ -27,6 +33,7 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
     }
 
     val maze: Array<Array<Room>>
+    private var latestFullMazeRender: BufferedImage = BufferedImage(renderWidth,renderHeight, BufferedImage.TYPE_INT_ARGB)
 
     fun getRoom(col: Int, row: Int): Room? {
         return if (row < 0 || row >= rows || col < 0 || col >= columns) null
@@ -77,10 +84,10 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
         while (frontier.isNotEmpty()) {
 
-           val room = frontier.shuffled()[0]
+            val room = frontier.shuffled()[0]
             frontier.remove(room)
 
-           val adjacentRoom = findAdjacentRooms(room)
+            val adjacentRoom = findAdjacentRooms(room)
                 .filter { reachableRooms.contains(it.first) }
                 .toList()
                 .shuffled()
@@ -98,8 +105,6 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
                 frontier.addAll(newFrontiers)
             }
         }
-
-        // renderedImageChannel.offer(renderMaze())
     }
 
 
@@ -163,14 +168,29 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
         renderedImageChannel.offer(renderMaze())
     }
 
+    @Deprecated("only counts the number of tiles in the maze; stupid")
+    fun findLongestPath(room: Room, visited: MutableSet<Room>): Int {
+
+        val unvisitedNeighbor = findAdjacentRooms(room)
+            .filterNot { visited.contains(it.first) }
+            .firstOrNull()
+
+        return if (unvisitedNeighbor != null) {
+            visited.add(room)
+            1 + findLongestPath(unvisitedNeighbor.first, visited)
+        } else {
+            0
+        }
+    }
+
     fun renderMaze(): BufferedImage {
 
-        val image = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
+        val image = BufferedImage(renderWidth, renderHeight, BufferedImage.TYPE_INT_ARGB)
 
         val g = image.graphics
 
         g.color = Color.WHITE
-        g.fillRect(0, 0, 800, 800)
+        g.fillRect(0, 0, renderWidth, renderHeight)
 
         g.color = Color.BLACK
 
@@ -190,19 +210,15 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
 
                     when (direction) {
                         NORTH -> {
-//                            g.color = Color.RED
                             g.fillRect(startX, startY, blockSize, blockSize / 10)
                         }
                         SOUTH -> {
-//                            g.color = Color.BLUE
                             g.fillRect(startX, startY + (blockSize * .9).toInt(), blockSize, blockSize / 10)
                         }
                         WEST -> {
-//                            g.color = Color.YELLOW
                             g.fillRect(startX, startY, blockSize / 10, blockSize)
                         }
                         EAST -> {
-//                            g.color = Color.GREEN
                             g.fillRect(startX + (blockSize * .9).toInt(), startY, blockSize / 10, blockSize)
                         }
                     }
@@ -211,8 +227,68 @@ class Labyrinth(val columns: Int, val rows: Int, val blockSize: Int = 100) {
         }
 
         g.dispose()
+        latestFullMazeRender = image
         return image
     }
 
+    fun renderRoom(room: Room) {
+
+        val image = BufferedImage(renderWidth, renderHeight, BufferedImage.TYPE_INT_ARGB)
+        val g = image.graphics
+
+        g.color = Color.RED
+        g.fillRect(0,0,renderWidth, renderHeight)
+
+        g.color = Color.BLACK
+
+
+        val startX = room.col * blockSize
+        val startY = room.row * blockSize
+
+        val thirdWidth = (renderWidth / 3)
+        val thirdHeight = (renderHeight / 3)
+
+        // North
+        g.fillRect(0, 0, thirdWidth, blockSize)
+        g.fillRect(2 * thirdWidth, 0, thirdWidth, blockSize)
+
+        // South
+        g.fillRect(0, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
+        g.fillRect(thirdWidth * 2, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
+
+        // West
+        g.fillRect(0, 0, blockSize , thirdHeight)
+        g.fillRect(0, 2 * thirdWidth, blockSize , thirdHeight)
+
+        // East
+        g.fillRect(thirdWidth  * 3 - blockSize, 0, blockSize, thirdHeight)
+        g.fillRect(thirdWidth  * 3 - blockSize, thirdHeight * 2, blockSize, thirdHeight)
+
+        room.closedDoors().forEach { direction ->
+
+             when (direction) {
+                 NORTH -> {
+                     g.fillRect(thirdWidth, 0, thirdWidth, blockSize)
+                 }
+                 SOUTH -> {
+                     g.fillRect(thirdWidth, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
+                 }
+                 WEST -> {
+                     g.fillRect(0, thirdWidth, blockSize , thirdHeight)
+                 }
+                 EAST -> {
+                     g.fillRect(thirdWidth  * 3 - blockSize, thirdHeight, blockSize, thirdHeight)
+                 }
+             }
+         }
+
+
+        g.dispose()
+        renderedImageChannel.offer(image)
+    }
+
+    fun publishLatestFullMazeRender() {
+        renderedImageChannel.offer( latestFullMazeRender)
+    }
 
 }
