@@ -1,3 +1,4 @@
+import Labyrinth.Direction.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.asFlow
@@ -116,6 +117,7 @@ class GameStateManager {
         }
 
         // Constantly render the game state
+        // TODO: only render when "dirty"
         thread {
 
             while (true) {
@@ -125,21 +127,42 @@ class GameStateManager {
                 if (movingUp) player.moveUp()
                 if (movingDown) player.moveDown()
 
+                currentRoom = hasPlayerChangedRooms(player, currentRoom)
+
                 val baseImage = labyrinth.renderRoom(currentRoom)
                 val g = baseImage.graphics
                 g.drawImage(player.getCurrentFrame(), player.x, player.y, null)
                 g.dispose()
 
                 gameStateRenderChannel.offer(baseImage)
-                sleep(10)
+                sleep(5)
             }
 
         }
 
 
-
     }
 
 
+    private fun hasPlayerChangedRooms(player: Player, room: Labyrinth.Room): Labyrinth.Room {
+       // FIXME: for now, a naive (read: no collision) traversal
+        val openDoors = room.openDoors
+
+        if (player.x < 0 && openDoors.contains(WEST)) {
+            player.x = 750
+            return labyrinth.getNeighbor(room, WEST)
+        } else if (player.x > 850 && openDoors.contains(EAST)) {
+            player.x = 50
+            return labyrinth.getNeighbor(room, EAST)
+        } else if (player.y < 0 && openDoors.contains(NORTH)) {
+            player.y = 750
+            return labyrinth.getNeighbor(room, NORTH)
+        } else if (player.y > 850 && openDoors.contains(SOUTH)) {
+            player.y = 50
+            return labyrinth.getNeighbor(room, SOUTH)
+        }
+
+        return room
+    }
 
 }

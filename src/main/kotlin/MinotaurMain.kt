@@ -19,10 +19,9 @@ import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val gameWidth = 850;
+    val gameWidth = 850
     val gameHeight = 850
     val gameStateManager = GameStateManager()
-
 
     fun loadImage(fileName: String): BufferedImage {
         val resource = javaClass.classLoader.getResource(fileName   )

@@ -42,6 +42,31 @@ class Labyrinth(
         else (maze[col][row])
     }
 
+    /**
+     * Returns the neighbor to the specified room.
+     * If none exists, return the original room
+     */
+    fun getNeighbor(room: Room, direction: Direction): Room {
+        when (direction) {
+
+            NORTH -> {
+                return getRoom(room.col, room.row - 1) ?: room
+            }
+
+            SOUTH -> {
+                return getRoom(room.col, room.row + 1) ?: room
+            }
+
+            WEST -> {
+                return getRoom(room.col - 1, room.row) ?: room
+            }
+
+            EAST -> {
+                return getRoom(room.col + 1, room.row) ?: room
+            }
+        }
+    }
+
     init {
         maze = Array(columns) { colNum ->
             Array(rows) { rowNum ->
