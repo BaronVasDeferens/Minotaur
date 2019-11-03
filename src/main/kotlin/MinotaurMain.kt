@@ -1,35 +1,56 @@
-import Labyrinth.Direction.*
-import kotlinx.coroutines.*
+import GameStateManager.GameKeyEvent
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
 import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.JPanel
 import kotlin.system.exitProcess
 
 object MinotaurMain {
 
-    val labyrinth = Labyrinth(8, 8)
-    var currentRoom = labyrinth.getRoom(0, 0)!!
+    val gameWidth = 850;
+    val gameHeight = 850
+    val gameStateManager = GameStateManager()
+
+
+    fun loadImage(fileName: String): BufferedImage {
+        val resource = javaClass.classLoader.getResource(fileName   )
+        return ImageIO.read(resource)
+    }
 
     @ExperimentalCoroutinesApi
-    val keyInputChannel = ConflatedBroadcastChannel<KeyEvent>()
+    val keyInputChannel = ConflatedBroadcastChannel<GameKeyEvent>()
 
     @ExperimentalCoroutinesApi
     private val frame = object : JFrame(), KeyListener {
 
+        /**
+         * The idea here is to capture keyboard input;
+         * If esc is pressed, kill the program
+         * Otherwise, transmit the input to the game manager for interpretation
+         */
+
         override fun keyPressed(e: KeyEvent?) {
-            keyInputChannel.offer(e!!)
+            if (e?.extendedKeyCode == KeyEvent.VK_ESCAPE) {
+                exitProcess(0)
+            } else {
+                keyInputChannel.offer(GameKeyEvent(e!!.extendedKeyCode, true))
+            }
         }
 
         override fun keyReleased(e: KeyEvent?) {
-            //keyInputChannel.offer(e!!)
-        }
+            keyInputChannel.offer(GameKeyEvent(e!!.extendedKeyCode, false))        }
 
         override fun keyTyped(e: KeyEvent?) {
             //keyInputChannel.offer(e!!)
@@ -42,10 +63,10 @@ object MinotaurMain {
 
     private val panel = object : JPanel(true) {
 
-        var imageToDraw = BufferedImage(850, 850, BufferedImage.TYPE_INT_ARGB)
+        var imageToDraw = BufferedImage(gameWidth, gameHeight, BufferedImage.TYPE_INT_ARGB)
 
         init {
-            labyrinth.renderedImageChannel.asFlow().onEach { image ->
+            gameStateManager.gameStateRenderChannel.asFlow().onEach { image ->
                 imageToDraw = image
                 repaint()
             }.launchIn(GlobalScope)
@@ -68,73 +89,9 @@ object MinotaurMain {
         frame.add(panel)
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.title = "FIND THE GIRL WHILE YOU CAN"
-        frame.preferredSize = Dimension(850, 850)
+        frame.preferredSize = Dimension(gameWidth, gameHeight)
         frame.pack()
         frame.isVisible = true
-
-        GlobalScope.launch {
-            keyInputChannel.asFlow().onEach { keyState ->
-                onKeyPressed(keyState)
-            }.launchIn(GlobalScope)
-        }
-    }
-
-    private fun onKeyPressed(x: KeyEvent) {
-        when (x.extendedKeyCode) {
-
-            KeyEvent.VK_W -> {
-                // Move NORTH
-                if (currentRoom.openDoors.contains(NORTH)) {
-                    currentRoom = labyrinth.getRoom(currentRoom.col, currentRoom.row - 1)!!
-                    labyrinth.renderRoom(currentRoom)
-                }
-            }
-            KeyEvent.VK_A -> {
-                // Move WEST
-                if (currentRoom.openDoors.contains(WEST)) {
-                    currentRoom = labyrinth.getRoom(currentRoom.col - 1, currentRoom.row)!!
-                    labyrinth.renderRoom(currentRoom)
-                }
-            }
-
-            KeyEvent.VK_S -> {
-                // move SOUTH
-                if (currentRoom.openDoors.contains(SOUTH)) {
-                    currentRoom = labyrinth.getRoom(currentRoom.col, currentRoom.row + 1)!!
-                    labyrinth.renderRoom(currentRoom)
-                }
-            }
-
-            KeyEvent.VK_D -> {
-                // Move EAST
-                if (currentRoom.openDoors.contains(EAST)) {
-                    currentRoom = labyrinth.getRoom(currentRoom.col + 1, currentRoom.row)!!
-                    labyrinth.renderRoom(currentRoom)
-                }
-            }
-
-            KeyEvent.VK_SPACE -> {
-                // Initialize and render
-                labyrinth.initializeMaze()
-            }
-
-            KeyEvent.VK_J -> {
-                // Show the maze view
-                labyrinth.publishLatestFullMazeRender()
-            }
-
-            KeyEvent.VK_K -> {
-                // Show the room view
-                labyrinth.renderRoom(currentRoom)
-            }
-
-            KeyEvent.VK_ESCAPE -> {
-                // Quit
-                exitProcess(0)
-            }
-        }
-        println("${currentRoom.col}, ${currentRoom.row} : ${currentRoom.openDoors}")
-        panel.repaint()
     }
 
 }

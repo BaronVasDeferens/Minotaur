@@ -2,14 +2,15 @@ import Labyrinth.Direction.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import java.awt.Color
 import java.awt.image.BufferedImage
-import java.nio.Buffer
 import kotlin.random.Random
 
-class Labyrinth(val columns: Int,
-                val rows: Int,
-                val blockSize: Int = 100,
-                val renderWidth: Int = 850,
-                val renderHeight: Int = 850) {
+class Labyrinth(
+    val columns: Int,
+    val rows: Int,
+    val blockSize: Int = 100,
+    val renderWidth: Int = 850,
+    val renderHeight: Int = 850
+) {
 
     val renderedImageChannel = ConflatedBroadcastChannel<BufferedImage>()
 
@@ -33,7 +34,8 @@ class Labyrinth(val columns: Int,
     }
 
     val maze: Array<Array<Room>>
-    private var latestFullMazeRender: BufferedImage = BufferedImage(renderWidth,renderHeight, BufferedImage.TYPE_INT_ARGB)
+    private var latestFullMazeRender: BufferedImage =
+        BufferedImage(renderWidth, renderHeight, BufferedImage.TYPE_INT_ARGB)
 
     fun getRoom(col: Int, row: Int): Room? {
         return if (row < 0 || row >= rows || col < 0 || col >= columns) null
@@ -46,6 +48,8 @@ class Labyrinth(val columns: Int,
                 Room(colNum, rowNum)
             }
         }
+
+        initializeMaze()
     }
 
     fun initializeMaze() {
@@ -231,13 +235,13 @@ class Labyrinth(val columns: Int,
         return image
     }
 
-    fun renderRoom(room: Room) {
+    fun renderRoom(room: Room): BufferedImage {
 
         val image = BufferedImage(renderWidth, renderHeight, BufferedImage.TYPE_INT_ARGB)
         val g = image.graphics
 
         g.color = Color.RED
-        g.fillRect(0,0,renderWidth, renderHeight)
+        g.fillRect(0, 0, renderWidth, renderHeight)
 
         g.color = Color.BLACK
 
@@ -257,38 +261,39 @@ class Labyrinth(val columns: Int,
         g.fillRect(thirdWidth * 2, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
 
         // West
-        g.fillRect(0, 0, blockSize , thirdHeight)
-        g.fillRect(0, 2 * thirdWidth, blockSize , thirdHeight)
+        g.fillRect(0, 0, blockSize, thirdHeight)
+        g.fillRect(0, 2 * thirdWidth, blockSize, thirdHeight)
 
         // East
-        g.fillRect(thirdWidth  * 3 - blockSize, 0, blockSize, thirdHeight)
-        g.fillRect(thirdWidth  * 3 - blockSize, thirdHeight * 2, blockSize, thirdHeight)
+        g.fillRect(thirdWidth * 3 - blockSize, 0, blockSize, thirdHeight)
+        g.fillRect(thirdWidth * 3 - blockSize, thirdHeight * 2, blockSize, thirdHeight)
 
         room.closedDoors().forEach { direction ->
 
-             when (direction) {
-                 NORTH -> {
-                     g.fillRect(thirdWidth, 0, thirdWidth, blockSize)
-                 }
-                 SOUTH -> {
-                     g.fillRect(thirdWidth, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
-                 }
-                 WEST -> {
-                     g.fillRect(0, thirdWidth, blockSize , thirdHeight)
-                 }
-                 EAST -> {
-                     g.fillRect(thirdWidth  * 3 - blockSize, thirdHeight, blockSize, thirdHeight)
-                 }
-             }
-         }
+            when (direction) {
+                NORTH -> {
+                    g.fillRect(thirdWidth, 0, thirdWidth, blockSize)
+                }
+                SOUTH -> {
+                    g.fillRect(thirdWidth, 0 + (thirdHeight * 3) - blockSize, thirdWidth, blockSize)
+                }
+                WEST -> {
+                    g.fillRect(0, thirdWidth, blockSize, thirdHeight)
+                }
+                EAST -> {
+                    g.fillRect(thirdWidth * 3 - blockSize, thirdHeight, blockSize, thirdHeight)
+                }
+            }
+        }
 
 
         g.dispose()
-        renderedImageChannel.offer(image)
+        //renderedImageChannel.offer(image)
+        return image
     }
 
     fun publishLatestFullMazeRender() {
-        renderedImageChannel.offer( latestFullMazeRender)
+        renderedImageChannel.offer(latestFullMazeRender)
     }
 
 }
