@@ -88,7 +88,7 @@ object MinotaurMain {
         frame.add(panel)
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.title = "FIND THE GIRL WHILE YOU CAN"
-        frame.preferredSize = Dimension(gameWidth, gameHeight)
+        frame.preferredSize = Dimension(gameWidth + 15, gameHeight + 30)
         frame.pack()
         frame.isVisible = true
     }

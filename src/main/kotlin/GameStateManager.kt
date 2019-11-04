@@ -1,4 +1,4 @@
-import Labyrinth.Direction.*
+import Direction.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.asFlow
@@ -14,55 +14,8 @@ class GameStateManager {
 
     data class GameKeyEvent(val keyEvent: Int, val isPressed: Boolean)
 
-    data class Player(var x: Int, var y: Int) {
-        private val imageFrames: Array<BufferedImage> = arrayOf(
-            MinotaurMain.loadImage("player_still.png"),
-            MinotaurMain.loadImage("player_walk_1.png"),
-            MinotaurMain.loadImage("player_still.png"),
-            MinotaurMain.loadImage("player_walk_2.png")
-        )
 
-        private var currentFrame = 0
-
-        private val ticksPerFrame = 10
-        private var currentTicks = 0
-
-        private val movementIncrement = 2
-
-        fun moveUp() {
-            y -= movementIncrement
-            advanceFrame()
-        }
-
-        fun moveDown() {
-            y += movementIncrement
-            advanceFrame()
-        }
-
-        fun moveRight() {
-            x += movementIncrement
-            advanceFrame()
-        }
-
-        fun moveLeft() {
-            x -= movementIncrement
-            advanceFrame()
-        }
-
-        private fun advanceFrame() {
-            currentTicks++
-            if (currentTicks >= ticksPerFrame) {
-                currentFrame = (currentFrame + 1) % imageFrames.size
-                currentTicks = 0
-            }
-        }
-
-        fun getCurrentFrame(): BufferedImage {
-            return imageFrames[currentFrame]
-        }
-    }
-
-    val player: Player
+    val player: Player = Player()
     val labyrinth = Labyrinth(8, 8)
     var currentRoom = labyrinth.getRoom(0, 0)!!
 
@@ -74,10 +27,19 @@ class GameStateManager {
     var movingRight: Boolean = false
 
     init {
-         player = Player(200,200)
+
+        // Add some entities
+        labyrinth.maze[7][7].addEntity(Wraith(300, 300))
+        labyrinth.maze[0][1].addEntity(Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat())
+        labyrinth.maze[1][0].addEntity(Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat(), Rat())
+        labyrinth.maze[2][0].addEntity(StaticEntity(200,200,"figure.png"))
+
+
+
 
         GlobalScope.launch {
 
+            // Process input from keyboard
             MinotaurMain.keyInputChannel.asFlow().onEach { event ->
 
                 // TODO: check bounds / collisions
@@ -94,6 +56,9 @@ class GameStateManager {
                         }
                         KeyEvent.VK_S -> {
                             movingDown = true
+                        }
+                        KeyEvent.VK_SPACE -> {
+                            // drop stone
                         }
                     }
                 } else {
@@ -129,6 +94,13 @@ class GameStateManager {
 
                 currentRoom = hasPlayerChangedRooms(player, currentRoom)
 
+                currentRoom.getEntities().forEach {
+                    if (it is ReactiveToPLayer) {
+                        it.reactToPlayer(player)
+                    }
+                }
+
+
                 val baseImage = labyrinth.renderRoom(currentRoom)
                 val g = baseImage.graphics
                 g.drawImage(player.getCurrentFrame(), player.x, player.y, null)
@@ -144,8 +116,8 @@ class GameStateManager {
     }
 
 
-    private fun hasPlayerChangedRooms(player: Player, room: Labyrinth.Room): Labyrinth.Room {
-       // FIXME: for now, a naive (read: no collision) traversal
+    private fun hasPlayerChangedRooms(player: Player, room: Room): Room {
+        // FIXME: for now, a naive (read: no collision) traversal
         val openDoors = room.openDoors
 
         if (player.x < 0 && openDoors.contains(WEST)) {

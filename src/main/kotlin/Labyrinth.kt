@@ -1,8 +1,50 @@
-import Labyrinth.Direction.*
+import Direction.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import java.awt.Color
 import java.awt.image.BufferedImage
 import kotlin.random.Random
+
+enum class Direction {
+    NORTH, EAST, SOUTH, WEST
+}
+
+data class Room(val col: Int, val row: Int) {
+
+    companion object {
+        val random = Random(System.currentTimeMillis())
+        fun rando(value: Int): Int {
+            return random.nextInt(value)
+        }
+    }
+
+    val color: Color = Color(rando(179) + 66, rando(179) + 66, rando(179) + 66)
+
+    private val residentEntities = mutableListOf<Entity>()
+
+    var openDoors = mutableSetOf<Direction>()
+
+    fun closedDoors() = values().toMutableSet().minus(openDoors)
+
+    fun isClosed(): Boolean {
+        return openDoors.isEmpty()
+    }
+
+    fun open(openTheseDoors: List<Direction>) {
+        openDoors.addAll(openTheseDoors)
+    }
+
+    fun addEntity(vararg entityList: Entity) {
+        residentEntities.addAll(entityList)
+    }
+
+    fun removeEntity(removeMe: Entity) {
+        residentEntities.remove(removeMe)
+    }
+
+    fun getEntities(): List<Entity> {
+        return residentEntities
+    }
+}
 
 class Labyrinth(
     val columns: Int,
@@ -14,24 +56,6 @@ class Labyrinth(
 
     val renderedImageChannel = ConflatedBroadcastChannel<BufferedImage>()
 
-    enum class Direction {
-        NORTH, EAST, SOUTH, WEST
-    }
-
-    data class Room(val col: Int, val row: Int) {
-
-        var openDoors = mutableSetOf<Direction>()
-
-        fun closedDoors() = Direction.values().toMutableSet().minus(openDoors)
-
-        fun isClosed(): Boolean {
-            return openDoors.isEmpty()
-        }
-
-        fun open(openTheseDoors: List<Direction>) {
-            openDoors.addAll(openTheseDoors)
-        }
-    }
 
     val maze: Array<Array<Room>>
     private var latestFullMazeRender: BufferedImage =
@@ -265,14 +289,10 @@ class Labyrinth(
         val image = BufferedImage(renderWidth, renderHeight, BufferedImage.TYPE_INT_ARGB)
         val g = image.graphics
 
-        g.color = Color.RED
+        g.color = room.color
         g.fillRect(0, 0, renderWidth, renderHeight)
 
         g.color = Color.BLACK
-
-
-        val startX = room.col * blockSize
-        val startY = room.row * blockSize
 
         val thirdWidth = (renderWidth / 3)
         val thirdHeight = (renderHeight / 3)
@@ -309,6 +329,10 @@ class Labyrinth(
                     g.fillRect(thirdWidth * 3 - blockSize, thirdHeight, blockSize, thirdHeight)
                 }
             }
+        }
+
+        for (entity in room.getEntities()) {
+            g.drawImage(entity.getCurrentFrame(), entity.x, entity.y, null)
         }
 
 
